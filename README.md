@@ -6,7 +6,7 @@ Um projeto abrangente de IoT que implementa comunicação baseada em MQTT com um
 
 ### Iniciar o Sistema
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Pré-requisitos
@@ -28,12 +28,12 @@ Isto irá publicar mensagens de teste com diferentes modelos de previsão iris n
 
 Sem apagar a base de dados:
 ```bash
-docker-compose down
+docker compose down
 ```
 
 Apagando a base de dados
 ```bash
-docker-compose down -v
+docker compose down -v
 ```
 
 ## Instruções de Configuração
