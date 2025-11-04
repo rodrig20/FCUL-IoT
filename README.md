@@ -60,7 +60,7 @@ O ficheiro `.env` deve conter as seguintes variáveis de ambiente:
 ```bash
 DB_USER=<YourUsername>
 DB_PASSWORD=<YourPassword>
-DB_DB=<YourDatabase>
+DB_NAME=<YourDatabase>
 ```
 
 
