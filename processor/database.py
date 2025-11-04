@@ -30,7 +30,7 @@ class Database:
                     password=os.getenv("DB_PASSWORD"),
                     host="db",
                     port="5432",
-                    database="ev",
+                    database=os.getenv("DB_NAME")
                 )
                 cls.__logger.info("Database connection pool created successfully")
             except psycopg2.OperationalError as e:
