@@ -20,7 +20,7 @@ def start_mqtt_client():
         payload = str(message.payload.decode("utf-8"))
         __logger.info(f"Received message: {payload}")
 
-        # TODO: QUANDO SOUBER OQ FAZER ADICIONAR AQUI COISAS DA DB
+        # TODO: when I know what to do, add DB-related stuff here
 
     broker_hostname = "mosquitto"
     port = 1883

@@ -1,61 +1,61 @@
-# Projeto FCUL IoT
+# FCUL IoT Project
 
-Um projeto abrangente de IoT que implementa comunicação baseada em MQTT com uma interface de dashboard para visualização de dados e futura integração de modelos de machine learning.
+A comprehensive IoT project that implements MQTT-based communication with a dashboard interface for data visualization and future integration of machine learning models.
 
-## Utilização
+## Usage
 
-### Iniciar o Sistema
+### Start the System
 ```bash
 docker compose up -d
 ```
 
-### Pré-requisitos
+### Prerequisites
 
 - Docker
 - Docker Compose
-- Python 3.8+ (para testar o broker)
+- Python 3.8+ (for testing the broker)
 
-### Testar a Arquitetura
-Pode testar se a arquitetura está a funcionar executando o utilitário publisher:
+### Test the Architecture
+You can test if the architecture is working by running the publisher utility:
 ```bash
-# Precisa de paho-mqtt==1.6.1
+# Requires paho-mqtt==1.6.1
 python utils/publisher.py
 ```
 
-Isto irá publicar mensagens de teste com diferentes modelos de previsão iris no broker MQTT.
+This will publish test messages with different iris prediction models to the MQTT broker.
 
-### Parar o Sistema
+### Stop the System
 
-Sem apagar a base de dados:
+Without deleting the database:
 ```bash
 docker compose down
 ```
 
-Apagando a base de dados
+Deleting the database
 ```bash
 docker compose down -v
 ```
 
-## Instruções de Configuração
+## Configuration Instructions
 
-1. Clone o repositório:
+1. Clone the repository:
    ```bash
    git clone https://github.com/rodrig20/FCUL-IoT.git
    cd FCUL-IoT
    ```
 
-2. Crie o ficheiro .env com as variáveis necessárias:
+2. Create the .env file with the necessary variables:
    ```bash
-   # Crie o ficheiro .env baseado no exemplo (se existir)
-   cp .env_example .env # se .env_example existir
-   # Caso contrário, crie manualmente
+   # Create the .env file based on the example (if it exists)
+   cp .env_example .env # if .env_example exists
+   # Otherwise, create it manually
    ```
 
-3. Defina as variáveis de ambiente necessárias no ficheiro .env (ver secção abaixo)
+3. Set the required environment variables in the .env file (see section below)
 
-### Variáveis de Ambiente
+### Environment Variables
 
-O ficheiro `.env` deve conter as seguintes variáveis de ambiente:
+The `.env` file should contain the following environment variables:
 
 ```bash
 DB_USER=<YourUsername>
@@ -64,45 +64,45 @@ DB_NAME=<YourDatabase>
 ```
 
 
-## Arquitetura
+## Architecture
 
-O projeto consiste em múltiplos componentes:
+The project consists of multiple components:
 
-- **Mosquitto MQTT Broker**: Lida com a comunicação MQTT entre componentes
-- **Dashboard**: Interface web para visualização de dados
-- **Processor**: Processa dados recebidos do broker MQTT e faz a ponte entre o dashboard e a Base de Dados
-- **Base de Dados**: Armazena os dados processados pelo Processor com PostregreSQL
-- **Utils**: Scripts auxiliares para testes da estrutura
+- **Mosquitto MQTT Broker**: Handles MQTT communication between components
+- **Dashboard**: Web interface for data visualization
+- **Processor**: Processes data received from the MQTT broker and acts as a bridge between the dashboard and the Database
+- **Database**: Stores data processed by the Processor with PostgreSQL
+- **Utils**: Helper scripts for testing the architecture
 
 ### Mosquitto MQTT Broker
 
-- Configuração: `mosquitto/mosquitto.conf`
-- Registos são armazenados em `mosquitto/log/`
-- Dados são armazenados em `mosquitto/data/`
+- Configuration: `mosquitto/mosquitto.conf`
+- Logs are stored in `mosquitto/log/`
+- Data is stored in `mosquitto/data/`
 
 ### Dashboard
 
-- Interface web para visualização
-- Conecta ao broker MQTT para receber dados em tempo real
+- Web interface for visualization
+- Connects to MQTT broker to receive real-time data
 
 ### Processor
 
-- Processa mensagens MQTT recebidas
-- Serve como ponte entre o Dashboard e a Base de Dados
+- Processes received MQTT messages
+- Acts as a bridge between the Dashboard and the Database
 
-### Base de Dados
+### Database
 
-- Armazena os dados processados pelo Processor
-- Integração com o sistema para persistência de dados
+- Stores data processed by the Processor
+- Integration with the system for data persistence
 
 ### Utils
 
-- `utils/publisher.py`: Publica mensagens de teste nos tópicos MQTT.
+- `utils/publisher.py`: Publishes test messages to MQTT topics.
 
 
-## Contribuição
+## Contribution
 
-1. Crie uma branch no repositório atual
-2. Faça as suas alterações
-3. Commit e push
-4. Crie um pull request
+1. Create a branch in the current repository
+2. Make your changes
+3. Commit and push
+4. Create a pull request
