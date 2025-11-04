@@ -47,9 +47,9 @@ services:
         image: postgres:16
         container_name: db
         environment:
-            - DB_USER=${DB_USER}
-            - DB_PASSWORD=${DB_PASSWORD}
-            - DB_DB=${DB_DB}
+            - POSTGRES_USER=${DB_USER}
+            - POSTGRES_PASSWORD=${DB_PASSWORD}
+            - POSTGRES_DB=${DB_DB}
         volumes:
             - postgres_data:/var/lib/postgresql/data
         ports:
