@@ -61,8 +61,8 @@ The `.env` file should contain the following environment variables:
 DB_USER=<YourUsername>
 DB_PASSWORD=<YourPassword>
 DB_NAME=<YourDatabase>
+SERVER_KEY=<YoutKey>
 ```
-
 
 ## Architecture
 
@@ -79,6 +79,7 @@ The project consists of multiple components:
 - Configuration: `mosquitto/mosquitto.conf`
 - Logs are stored in `mosquitto/log/`
 - Data is stored in `mosquitto/data/`
+- Certificates are stored in`mosquitto/certs/`
 
 ### Dashboard
 
