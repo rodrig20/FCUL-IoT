@@ -31,29 +31,49 @@ signal.signal(signal.SIGINT, handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
 
 
-# ===========
-#  Routes
-# ===========
 @app.route("/get_headers", methods=["GET"])
 def get_headers():
-    """Route that provides headers from the database
-
-    Returns:
-        Response: JSON response containing headers from the database
-    """
     headers = Database.get_headers()
     return jsonify(headers)
 
 
-@app.route("/get_all_info", methods=["GET"])
-def get_all_info():
-    """Route that provides all information from the database
+@app.route("/get_user_info/<user_id>", methods=["GET"])
+def get_user_info(user_id):
+    """Route that provides all information for a specific user from the database
+
+    Args:
+        user_id: The ID of the user to retrieve information for
 
     Returns:
-        Response: JSON response containing all info from the database
+        Response: JSON response containing all info for the specified user from the database
     """
-    data = Database.get_all_info()
+    data = Database.get_info_by_username(user_id)
     return jsonify(data)
+
+
+@app.route("/get_stations", methods=["GET"])
+def get_stations():
+    """Route that provides all charging stations with their ID, latitude and longitude
+
+    Returns:
+        Response: JSON response containing all charging stations
+    """
+    stations = Database.get_stations()
+    return jsonify(stations)
+
+
+@app.route("/get_stations_for_user/<user_id>", methods=["GET"])
+def get_stations_for_user(user_id):
+    """Route that provides all charging stations with visit status for the user
+
+    Args:
+        user_id: The ID of the user to retrieve stations for
+
+    Returns:
+        Response: JSON response containing all stations and visit status
+    """
+    stations = Database.get_stations_for_user(user_id)
+    return jsonify(stations)
 
 
 if __name__ == "__main__":
