@@ -2,10 +2,14 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background: linear-gradient(to right, #1a1a2e, #1a1a2e);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    margin: 0;
+    padding: 0;
+    color: #cbd5e1;
 }
 
 .data-table-container {
+    max-height: 400px;
     overflow-y: auto;
 }
 
@@ -16,8 +20,8 @@ header.sticky {
 
 /* Improve table scrolling experience */
 .data-table-container {
-    max-height: calc(100vh - 220px);
-    /* Adjust based on header height */
+    max-height: calc(100vh - 600px);
+    /* Adjust based on header and other sections height */
     overflow-y: auto;
 }
 
@@ -26,16 +30,21 @@ header.sticky {
     position: sticky;
     top: 0;
     z-index: 10;
-    background-color: #3a3a6a;
+    background-color: #334155;
+    color: #e2e8f0;
 }
 
 /* Styling for table rows */
 tr:nth-child(even) {
-    background-color: #2a2a4a;
+    background-color: #1e293b;
 }
 
 tr:nth-child(odd) {
-    background-color: #1a1a2e;
+    background-color: #0f172a;
+}
+
+tr:hover {
+    background-color: #334155 !important;
 }
 
 /* Refresh button style */
@@ -43,4 +52,74 @@ tr:nth-child(odd) {
     background-color: #8B5CF6;
     /* Purple Accent color */
     box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.5), 0 2px 4px -1px rgba(139, 92, 246, 0.4);
+}
+
+/* Scrollbar styling */
+.data-table-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.data-table-container::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+.data-table-container::-webkit-scrollbar-thumb {
+    background: #4f46e5;
+    border-radius: 4px;
+}
+
+.data-table-container::-webkit-scrollbar-thumb:hover {
+    background: #818cf8;
+}
+
+/* Additional styles for dashboard elements */
+.card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #334155;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+/* Chart containers */
+.chart-container {
+    position: relative;
+    height: 250px;
+    width: 100%;
+}
+
+/* Fix for chart containers to prevent infinite growth */
+#energyChart, #sessionsChart {
+    max-height: 250px;
+    height: 250px !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .data-table-container {
+        max-height: calc(100vh - 700px);
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Animation for live indicator */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.live-indicator {
+    animation: pulse 2s infinite;
 }
