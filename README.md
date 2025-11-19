@@ -64,6 +64,8 @@ DB_NAME=<YourDatabase>
 SERVER_KEY=<YoutKey>
 ```
 
+> **Note**: You may need to update the certificates and security configurations with your own valid credentials for production use.
+
 ## Architecture
 
 The project consists of multiple components:
