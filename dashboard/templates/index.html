@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - IoT Project</title>
+    <title>EV Charging Dashboard - IoT Project</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,8 +17,10 @@
                     colors: {
                         primary: '#4B5563',
                         secondary: '#6B7280',
-                        dark: '#2D233A',
+                        dark: '#0f172a',
+                        darkSecondary: '#1e293b',
                         accent: '#8B5CF6',
+                        accentSecondary: '#a78bfa',
                         gray: {
                             50: '#fafafe',
                             100: '#dadcfa',
@@ -31,31 +33,86 @@
                             800: '#2a2a4a',
                             900: '#1a1a2e',
                         },
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
                     }
                 }
             }
         }
     </script>
 
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Leaflet.js for OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <!-- Custom styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        html {
+            overscroll-behavior: none;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        }
+        #stations-map {
+            background-color: #2d3748;
+        }
+
+        .station-popup {
+            z-index: 10000 !important;
+            overflow: visible !important;
+        }
+
+        .station-popup-content {
+            max-height: 200px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 10000;
+        }
+    </style>
 </head>
 
-<body class="bg-dark min-h-screen text-gray-300">
+<body class="gradient-bg min-h-screen text-gray-300">
     <!-- Header -->
-    <header class="bg-gray-800 shadow-lg sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-white">Dashboard - IoT Project</h1>
+    <header class="bg-slate-800 shadow-xl sticky top-0 z-50 border-b border-slate-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-accent p-2 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold text-white">EV Charging Dashboard</h1>
+                        <p class="text-xs text-gray-400">Real-time monitoring and analytics</p>
+                    </div>
+                </div>
                 <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-400">Last updated: <span id="last-updated">Just now</span></span>
-                    <button id="refresh-btn"
-                        class="bg-accent hover:bg-purple-700 text-white px-4 py-2 rounded-md transition duration-200 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20"
-                            fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                                clip-rule="evenodd" />
+                    <span class="text-sm text-gray-400 hidden sm:block">Last updated: <span id="last-updated">Just now</span></span>
+                    <button id="refresh-btn" class="bg-accent hover:bg-accentSecondary text-white px-4 py-2 rounded-lg transition duration-200 flex items-center shadow-lg hover:shadow-xl">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
                         </svg>
                         Refresh
                     </button>
@@ -65,24 +122,103 @@
     </header>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <!-- Data Table -->
-        <div class="bg-gray-800 shadow-2xl rounded-lg overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-700">
-                <h2 class="text-xl font-semibold text-white">Data Table</h2>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 card-hover border border-slate-700">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-lg bg-blue-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-400">Total Sessions</h3>
+                        <p class="text-2xl font-bold text-white" id="total-sessions">0</p>
+                    </div>
+                </div>
             </div>
-            <div class="data-table-container">
-                <table id="data-table" class="min-w-full divide-y divide-gray-700">
-                    <thead class="bg-gray-700">
+
+            <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 card-hover border border-slate-700">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-lg bg-green-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-400">Energy Consumed</h3>
+                        <p class="text-2xl font-bold text-white" id="total-energy">0 kWh</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 card-hover border border-slate-700">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-lg bg-purple-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-400">Avg. Charging Rate</h3>
+                        <p class="text-2xl font-bold text-white" id="avg-rate">0 kW</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 card-hover border border-slate-700">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-lg bg-amber-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-400">Avg. Duration</h3>
+                        <p class="text-2xl font-bold text-white" id="avg-duration">0h</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                <h3 class="text-lg font-semibold text-white mb-4">Energy Consumption by Time of Day</h3>
+                <canvas id="energyChart"></canvas>
+            </div>
+            <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                <h3 class="text-lg font-semibold text-white mb-4">Charging Sessions by Day of Week</h3>
+                <canvas id="sessionsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Map Section -->
+        <div class="mb-8">
+            <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                <h3 class="text-lg font-semibold text-white mb-4">Charging Stations Map</h3>
+                <div id="stations-map" class="w-full h-96 rounded-lg"></div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl overflow-hidden border border-slate-700">
+            <div class="px-6 py-4 border-b border-slate-700">
+                <h2 class="text-xl font-semibold text-white flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Charging Sessions Data
+                </h2>
+            </div>
+            <div class="data-table-container max-h-[500px] overflow-y-auto">
+                <table id="data-table" class="min-w-full divide-y divide-slate-700">
+                    <thead class="bg-slate-700 sticky top-0 z-10">
                         <tr>
-                            {% for h in headers %}
-                            <th scope="col"
-                                class="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider sticky top-0 z-10">
-                                {{ h }}</th>
-                            {% endfor %}
                         </tr>
                     </thead>
-                    <tbody id="table-body" class="bg-gray-800 divide-y divide-gray-700">
+                    <tbody id="table-body" class="bg-slate-800/50 divide-y divide-slate-700">
                     </tbody>
                 </table>
             </div>
