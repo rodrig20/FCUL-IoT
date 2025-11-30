@@ -30,7 +30,7 @@ class Database:
                     password=os.getenv("DB_PASSWORD"),
                     host="db",
                     port="5432",
-                    database=os.getenv("DB_NAME")
+                    database=os.getenv("DB_NAME"),
                 )
                 cls.__logger.info("Database connection pool created successfully")
             except psycopg2.OperationalError as e:
@@ -74,7 +74,8 @@ class Database:
                         SELECT FROM information_schema.tables
                         WHERE table_name = %s
                     );
-                """, (table_name,)
+                """,
+                    (table_name,),
                 )
                 table_exists = cur.fetchone()[0]
 
@@ -86,7 +87,9 @@ class Database:
                 count = cur.fetchone()[0]
                 return count == 0
         except Exception as e:
-            cls.__logger.error(f"Error checking if database table {table_name} is empty: {e}")
+            cls.__logger.error(
+                f"Error checking if database table {table_name} is empty: {e}"
+            )
             return True  # Assume it's empty if there's an error
         finally:
             cls.__release_db_connection(conn)
@@ -104,14 +107,14 @@ class Database:
         if not cls.__db_is_empty("ev_with_stations"):
             cls.__logger.info("Table ev_with_stations is not empty")
             return
-        cls.__logger.info("Table ev_with_stations is empty. Initializing database from CSV...")
+        cls.__logger.info(
+            "Table ev_with_stations is empty. Initializing database from CSV..."
+        )
         conn = None
         try:
             conn = cls.__get_db_connection()
             if not conn:
-                cls.__logger.error(
-                    "Could not get DB connection for CSV initialization"
-                )
+                cls.__logger.error("Could not get DB connection for CSV initialization")
                 return
 
             with conn.cursor() as cur:
@@ -190,7 +193,9 @@ class Database:
         if not cls.__db_is_empty("stations"):
             cls.__logger.info("Table stations is not empty")
             return
-        cls.__logger.info("Table stations is empty. Initializing stations database from CSV...")
+        cls.__logger.info(
+            "Table stations is empty. Initializing stations database from CSV..."
+        )
         conn = None
         try:
             conn = cls.__get_db_connection()
@@ -270,30 +275,36 @@ class Database:
         """
         conn = cls.__get_db_connection()
         if not conn:
-            cls.__logger.error(f"Could not get DB connection to fetch info for user {username}")
+            cls.__logger.error(
+                f"Could not get DB connection to fetch info for user {username}"
+            )
             return {}
 
         try:
             with conn.cursor() as cur:
                 headers = cls.get_headers()
-                cur.execute("SELECT * FROM ev_with_stations WHERE user_id = %s;", (username,))
+                cur.execute(
+                    "SELECT * FROM ev_with_stations WHERE user_id = %s;", (username,)
+                )
                 rows = cur.fetchall()
 
                 # Filter out the user_id header
-                filtered_headers = [header for header in headers if header != 'user_id']
+                filtered_headers = [header for header in headers if header != "user_id"]
 
                 # Convert rows to list of dictionaries
                 data = []
                 for row in rows:
                     row_dict = {}
                     for i, header in enumerate(headers):
-                        if header != 'user_id':
+                        if header != "user_id":
                             row_dict[header] = row[i]
                     data.append(row_dict)
 
                 return {"headers": filtered_headers, "data": data}
         except Exception as e:
-            cls.__logger.error(f"Error fetching info for user {username} from database: {e}")
+            cls.__logger.error(
+                f"Error fetching info for user {username} from database: {e}"
+            )
             return {}
         finally:
             cls.__release_db_connection(conn)
@@ -333,7 +344,9 @@ class Database:
         try:
             with conn.cursor() as cur:
                 # Execute the query to get Station ID, Latitude, and Longitude
-                cur.execute("SELECT \"station_id\", \"latitude\", \"longitude\" FROM stations;")
+                cur.execute(
+                    'SELECT "station_id", "latitude", "longitude" FROM stations;'
+                )
                 rows = cur.fetchall()
 
                 # Convert to list of dictionaries
@@ -342,7 +355,7 @@ class Database:
                     station = {
                         "station_id": row[0],
                         "latitude": row[1],
-                        "longitude": row[2]
+                        "longitude": row[2],
                     }
                     stations.append(station)
 
@@ -367,13 +380,15 @@ class Database:
         try:
             with conn.cursor() as cur:
                 # Get all stations (without spatial limitation)
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT
                         s."station_id",
                         s."latitude",
                         s."longitude"
                     FROM stations s
-                """)
+                """
+                )
 
                 rows = cur.fetchall()
 
@@ -384,35 +399,146 @@ class Database:
                         "station_id": row[0],
                         "latitude": row[1],
                         "longitude": row[2],
-                        "visited": False  # Temporary value, will be updated below
+                        "visited": False,  # Temporary value, will be updated below
                     }
                     stations.append(station)
 
                 # Now, update the visit status for the relevant stations
                 if stations:  # Only if there are stations to check
                     # Get the stations visited by the user
-                    station_ids = [station['station_id'] for station in stations]
+                    station_ids = [station["station_id"] for station in stations]
                     if station_ids:  # Only proceed if there are station IDs
-                        placeholders = ','.join(['%s'] * len(station_ids))
-                        cur.execute(f"""
+                        placeholders = ",".join(["%s"] * len(station_ids))
+                        cur.execute(
+                            f"""
                             SELECT DISTINCT e.charging_station_id
                             FROM ev_with_stations e
                             WHERE e.user_id = %s
                             AND e.charging_station_id IN ({placeholders})
-                        """, [username] + station_ids)
+                        """,
+                            [username] + station_ids,
+                        )
 
                         visited_station_ids = [row[0] for row in cur.fetchall()]
 
                         # Update the visit status for each station
                         for station in stations:
-                            if station['station_id'] in visited_station_ids:
-                                station['visited'] = True
+                            if station["station_id"] in visited_station_ids:
+                                station["visited"] = True
 
-                cls.__logger.info(f"Fetched {len(stations)} stations for user {username}")
+                cls.__logger.info(
+                    f"Fetched {len(stations)} stations for user {username}"
+                )
                 return stations
         except Exception as e:
-            cls.__logger.error(f"Error fetching stations for user {username} from database: {e}")
+            cls.__logger.error(
+                f"Error fetching stations for user {username} from database: {e}"
+            )
             return []
+        finally:
+            cls.__release_db_connection(conn)
+
+    @classmethod
+    def get_all_users(cls):
+        """
+        Returns a list of all unique users from the ev_with_stations table
+        """
+        conn = cls.__get_db_connection()
+        if not conn:
+            cls.__logger.error("Could not get DB connection to fetch all users")
+            return []
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT DISTINCT user_id FROM ev_with_stations WHERE user_id IS NOT NULL;"
+                )
+                rows = cur.fetchall()
+
+                # Extract user_ids from the result
+                users = [row[0] for row in rows if row[0] is not None]
+
+                cls.__logger.info(f"Fetched {len(users)} unique users from database")
+                return users
+        except Exception as e:
+            cls.__logger.error(f"Error fetching all users from database: {e}")
+            return []
+        finally:
+            cls.__release_db_connection(conn)
+
+    @classmethod
+    def get_all_users_info(cls):
+        """
+        Returns all information for all users from the ev_with_stations table
+        """
+        conn = cls.__get_db_connection()
+        if not conn:
+            cls.__logger.error("Could not get DB connection to fetch all users info")
+            return {}
+
+        try:
+            with conn.cursor() as cur:
+                headers = cls.get_headers()
+
+                cur.execute("SELECT * FROM ev_with_stations;")
+                rows = cur.fetchall()
+
+                # Convert rows to list of dictionaries
+                data = []
+                for row in rows:
+                    row_dict = {}
+                    for i, header in enumerate(headers):
+                        row_dict[header] = row[i]
+                    data.append(row_dict)
+
+                return {"headers": list(headers), "data": data}
+        except Exception as e:
+            cls.__logger.error(f"Error fetching all users info from database: {e}")
+            return {}
+        finally:
+            cls.__release_db_connection(conn)
+
+    @classmethod
+    def get_values_for_features(cls, feat1: str, feat2: str):
+        """
+        Returns the values for two specific features from the ev_with_stations table
+        """
+        conn = cls.__get_db_connection()
+        if not conn:
+            cls.__logger.error(
+                f"Could not get DB connection to fetch values for features {feat1}, {feat2}"
+            )
+            return {"error": "Could not get DB connection"}
+
+        try:
+            headers = cls.get_headers()
+            if feat1 not in headers or feat2 not in headers:
+                cls.__logger.error(f"Invalid features requested: {feat1}, {feat2}")
+                # It might be better to return a more specific error
+                invalid_features = []
+                if feat1 not in headers:
+                    invalid_features.append(feat1)
+                if feat2 not in headers:
+                    invalid_features.append(feat2)
+                return {
+                    "error": f"Invalid feature(s): {', '.join(invalid_features)}. Please use /get_headers to see available features."
+                }
+
+            with conn.cursor() as cur:
+                # Safely construct the query since we've validated the column names
+                query = f'SELECT "{feat1}", "{feat2}" FROM ev_with_stations;'
+                cur.execute(query)
+                rows = cur.fetchall()
+
+                # Convert rows to list of dictionaries
+                data = [{feat1: row[0], feat2: row[1]} for row in rows]
+
+                return {"data": data}
+        except Exception as e:
+            cls.__logger.error(
+                f"Error fetching values for features {feat1}, {feat2} from database: {e}"
+            )
+            return {"error": "An error occurred while fetching data."}
         finally:
             cls.__release_db_connection(conn)
 

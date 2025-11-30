@@ -1,5 +1,5 @@
 from processor_requester import ProcessorRequester
-from flask import Flask, render_template, jsonify, session, redirect, url_for
+from flask import Flask, render_template, jsonify, request
 import logging
 import signal
 import sys
@@ -13,25 +13,10 @@ def handle_exit(signum, frame):
 
 
 app = Flask(__name__)
-# Set a secret key for sessions - in production, use a more secure random key
-app.secret_key = os.getenv("SERVER_KEY", "your-secret-key-here-change-in-production")
 
 # Create logger
 __app_logger = logging.getLogger("dashboard-server")
 __app_logger.setLevel(logging.INFO)
-
-
-def login_required(f):
-    """Decorator to require login for certain routes"""
-
-    def decorated_function(*args, **kwargs):
-        if "logged_in" not in session or not session["logged_in"]:
-            return redirect(url_for("login_page"))
-        return f(*args, **kwargs)
-
-    decorated_function.__name__ = f.__name__  # Fix for Flask endpoint naming
-    return decorated_function
-
 
 # Exit Program on docker SIGTERM
 signal.signal(signal.SIGINT, handle_exit)
@@ -42,7 +27,6 @@ signal.signal(signal.SIGTERM, handle_exit)
 #  Routes
 # ===========
 @app.route("/", methods=["GET"])
-@login_required
 def index() -> str:
     """Main dashboard page
 
@@ -50,86 +34,84 @@ def index() -> str:
         str: html page (index.html)
     """
     headers = ProcessorRequester.get_headers()
-    username = session.get("username", "User")
-    return render_template("index.html", headers=headers, username=username)
+    # Get list of users for the filter
+    users = ProcessorRequester.get_all_users()
+    return render_template("index.html", headers=headers, users=users)
 
 
 @app.route("/get_info", methods=["GET"])
-@login_required
 def info():
-    """Route that gives all info from processor for the logged-in user
+    """Route that gives all info from processor for a specific user or all users
 
     Returns:
-        Response: all info given by processor api for the user
+        Response: all info given by processor api for the specified user or all users
     """
-    username = session.get("username")
-    if not username:
-        return jsonify({"success": False, "message": "User not logged in"}), 401
-
-    data = ProcessorRequester.get_user_info(username)
-    return jsonify(data)
+    username = request.args.get("username")
+    if not username or username == "ALL_USERS":
+        # If no username provided, return data for all users
+        data = ProcessorRequester.get_all_users_info()
+        return jsonify(data)
+    else:
+        # Get data for specific user
+        data = ProcessorRequester.get_user_info(username)
+        return jsonify(data)
 
 
 @app.route("/get_stations", methods=["GET"])
-@login_required
 def get_stations():
     """Route that provides all charging stations with their ID, latitude and longitude
 
     Returns:
         Response: JSON response containing all charging stations
     """
-    username = session.get("username")
-    if not username:
-        return jsonify({"success": False, "message": "User not logged in"}), 401
-
-    data = ProcessorRequester.get_stations_for_user(username)
-    return jsonify(data)
-
-
-@app.route("/login", methods=["GET"])
-def login_page() -> str:
-    """Login page
-
-    Returns:
-        str: html page (login.html)
-    """
-    return render_template("login.html")
-
-
-@app.route("/login", methods=["POST"])
-def login():
-    """Handle login
-
-    Returns:
-        Response: JSON response with login result
-    """
-    from flask import request
-
-    data = request.get_json()
-
-    # In a real implementation, you would validate credentials against a database
-    # For now, we'll just accept any non-empty credentials as valid
-    username = data.get("username", "") if data else ""
-    password = data.get("password", "") if data else ""
-
-    if username and password:
-        if username == "User_1" and password == "12345":
-            session["logged_in"] = True
-            session["username"] = username
-            return jsonify({"success": True, "message": "Login successful"})
-    return jsonify({"success": False, "message": "Invalid credentials"}), 401
+    username = request.args.get("username")
+    if not username or username == "ALL_USERS":
+        data = ProcessorRequester.get_stations()
+        if data:
+            stations = [
+                {
+                    "station_id": station.get("station_id"),
+                    "latitude": station.get("latitude"),
+                    "longitude": station.get("longitude"),
+                    "visited": False,
+                }
+                for station in data
+            ]
+            return jsonify(stations)
+    else:
+        data = ProcessorRequester.get_stations_for_user(username)
+        return jsonify(data)
 
 
-@app.route("/logout", methods=["POST"])
-def logout():
-    """Handle logout by clearing the session
+@app.route("/get_users", methods=["GET"])
+def get_users():
+    """Route that provides a list of all users
 
     Returns:
-        Response: JSON response with logout result
+        Response: JSON response containing all users
     """
-    session.pop("logged_in", None)
-    session.pop("username", None)
-    return jsonify({"success": True, "message": "Logout successful"})
+    users = ProcessorRequester.get_all_users()
+    return jsonify({"users": users})
+
+
+@app.route("/classify", methods=['POST'])
+def classify():
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    feat1 = json_data.get("feat1")
+    feat2 = json_data.get("feat2")
+
+    if not feat1 or not feat2:
+        return jsonify({"error": "Missing feat1 or feat2 in JSON body"}), 400
+    
+    data = ProcessorRequester.classify(feat1, feat2)
+
+    if data:
+        return jsonify(data)
+    else:
+        return jsonify({"error": "Failed to get classification from processor"}), 500
 
 
 __app_logger.info("All routes are created")

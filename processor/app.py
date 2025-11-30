@@ -1,20 +1,14 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
+import requests
 from database import Database
+import datetime
 import logging
 import signal
 import sys
 
 
 def handle_exit(signum, frame):
-    """Handles exit signals for graceful shutdown
-
-    This function is called when the application receives a SIGINT or SIGTERM
-    signal, allowing for graceful shutdown of the processor server.
-
-    Args:
-        signum: Signal number
-        frame: Current stack frame
-    """
+    """Called when receive a exit signal"""
     __app_logger.info(f"Shutting down...")
     sys.exit(0)
 
@@ -75,6 +69,77 @@ def get_stations_for_user(user_id):
     stations = Database.get_stations_for_user(user_id)
     return jsonify(stations)
 
+
+@app.route("/get_users", methods=["GET"])
+def get_users():
+    """Route that provides a list of all unique users
+
+    Returns:
+        Response: JSON response containing all users
+    """
+    users = Database.get_all_users()
+    return jsonify(users)
+
+
+@app.route("/get_all_users_info", methods=["GET"])
+def get_all_users_info():
+    """Route that provides information for all users combined
+
+    Returns:
+        Response: JSON response containing all information for all users
+    """
+    data = Database.get_all_users_info()
+    return jsonify(data)
+
+
+@app.route("/classify", methods=["POST"])
+def classify():
+    """
+    Receives two feature names, gets the data from the database,
+    and calls the ML service to perform clustering.
+    """
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    feat1 = json_data.get("feat1")
+    feat2 = json_data.get("feat2")
+
+    if not feat1 or not feat2:
+        return jsonify({"error": "Missing feat1 or feat2 in JSON body"}), 400
+
+    # Get data from the database
+    db_data = Database.get_values_for_features(feat1, feat2)
+    if "error" in db_data:
+        return jsonify(db_data), 400
+
+    data = db_data.get("data")
+    if not data:
+        return jsonify({"error": "No data found for the given features"}), 404
+
+    # Prepare data for the ML service
+    feat1_list = [d[feat1] for d in data]
+    feat2_list = [d[feat2] for d in data]
+
+    # Convert datetime objects to strings
+    feat1_list = [val.isoformat() if isinstance(val, datetime.datetime) else val for val in feat1_list]
+    feat2_list = [val.isoformat() if isinstance(val, datetime.datetime) else val for val in feat2_list]
+
+    ml_payload = {
+        "feat1_name": feat1,
+        "feat2_name": feat2,
+        "feat1_list": feat1_list,
+        "feat2_list": feat2_list
+    }
+
+    try:
+        ml_url = "http://ml:5000/classify"
+        response = requests.post(ml_url, json=ml_payload)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.exceptions.RequestException as e:
+        __app_logger.error(f"Could not connect to ml service: {e}")
+        return jsonify({"error": "Could not connect to ml service"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)

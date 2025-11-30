@@ -1,6 +1,9 @@
 // Initialize Chart instances
 let energyChart = null;
 let sessionsChart = null;
+let allUsersData = [];
+let currentTableData = [];
+let currentHeaders = [];
 
 // Function to update statistics cards with calculated data
 function updateStats(calculatedStats) {
@@ -57,7 +60,7 @@ function updateEnergyChart(calculatedData) {
                     ticks: {
                         color: '#cbd5e1',
                         stepSize: 50,
-                        callback: function(value) {
+                        callback: function (value) {
                             if (value % 50 === 0) {
                                 return value;
                             }
@@ -120,7 +123,7 @@ function updateSessionsChart(calculatedData) {
                     ticks: {
                         color: '#cbd5e1',
                         stepSize: 1,
-                        callback: function(value) {
+                        callback: function (value) {
                             return Number.isInteger(value) ? value : null;
                         }
                     }
@@ -144,36 +147,22 @@ function calculateStats(data, headers) {
     let total_energy = 0;
     let avg_rate = 0;
     let avg_duration = 0;
+    
+    let total_rate = 0;
+    let total_duration = 0;
 
-    // Find column indices based on exact header names
     const energy_col = headers.indexOf('energy_consumed_kwh');
     const rate_col = headers.indexOf('charging_rate_kw');
     const duration_col = headers.indexOf('charging_duration_hours');
 
-    // Calculate totals
     data.forEach(row => {
-        if (energy_col !== -1 && !isNaN(parseFloat(row[headers[energy_col]]))) {
-            total_energy += parseFloat(row[headers[energy_col]]);
-        }
+        if (energy_col !== -1) total_energy += parseFloat(row['energy_consumed_kwh']) || 0;
+        if (rate_col !== -1) total_rate += parseFloat(row['charging_rate_kw']) || 0;
+        if (duration_col !== -1) total_duration += parseFloat(row['charging_duration_hours']) || 0;
     });
 
-    // Calculate averages
-    let valid_rate_count = 0, valid_duration_count = 0;
-    let total_rate = 0, total_duration = 0;
-
-    data.forEach(row => {
-        if (rate_col !== -1 && !isNaN(parseFloat(row[headers[rate_col]]))) {
-            total_rate += parseFloat(row[headers[rate_col]]);
-            valid_rate_count++;
-        }
-        if (duration_col !== -1 && !isNaN(parseFloat(row[headers[duration_col]]))) {
-            total_duration += parseFloat(row[headers[duration_col]]);
-            valid_duration_count++;
-        }
-    });
-
-    avg_rate = valid_rate_count > 0 ? total_rate / valid_rate_count : 0;
-    avg_duration = valid_duration_count > 0 ? total_duration / valid_duration_count : 0;
+    avg_rate = data.length > 0 ? total_rate / data.length : 0;
+    avg_duration = data.length > 0 ? total_duration / data.length : 0;
 
     return {
         total_sessions: total_sessions,
@@ -183,223 +172,120 @@ function calculateStats(data, headers) {
     };
 }
 
-// Function to calculate chart data from table data
 function calculateChartData(data, headers) {
-    // Find column indices based on exact header names
-    const time_col = headers.indexOf('time_of_day');
-    const day_col = headers.indexOf('day_of_week');
+    const energy_by_time_of_day = { 'Morning': 0, 'Afternoon': 0, 'Evening': 0, 'Night': 0 };
+    const sessions_by_day_of_week = { 'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0 };
 
-    // Initialize chart data
-    const energy_by_time_of_day = {};
-    const sessions_by_day_of_week = {};
+    data.forEach(row => {
+        const time = row.time_of_day;
+        const day = row.day_of_week;
+        const energy = parseFloat(row.energy_consumed_kwh) || 0;
 
-    // Define order for time of day
-    const timeOfDayOrder = ['Morning', 'Afternoon', 'Evening', 'Night'];
-    // Define order for days of week
-    const daysOfWeekOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-    // Calculate energy by time of day
-    if (time_col !== -1) {
-        data.forEach(row => {
-            const time = row[headers[time_col]];
-            const energy_col = headers.indexOf('energy_consumed_kwh');
-
-            if (energy_col !== -1 && !isNaN(parseFloat(row[headers[energy_col]]))) {
-                if (!energy_by_time_of_day[time]) {
-                    energy_by_time_of_day[time] = 0;
-                }
-                energy_by_time_of_day[time] += parseFloat(row[headers[energy_col]]);
-            }
-        });
-    }
-
-    // Calculate sessions by day of week
-    if (day_col !== -1) {
-        data.forEach(row => {
-            const day = row[headers[day_col]];
-            if (!sessions_by_day_of_week[day]) {
-                sessions_by_day_of_week[day] = 0;
-            }
+        if (energy_by_time_of_day.hasOwnProperty(time)) {
+            energy_by_time_of_day[time] += energy;
+        }
+        if (sessions_by_day_of_week.hasOwnProperty(day)) {
             sessions_by_day_of_week[day]++;
+        }
+    });
+
+    return { energy_by_time_of_day, sessions_by_day_of_week };
+}
+
+function updateDashboard() {
+    const selectedUser = document.getElementById('user-filter').value;
+    
+    if (selectedUser === 'ALL_USERS') {
+        currentTableData = allUsersData;
+    } else {
+        currentTableData = allUsersData.filter(row => row.user_id === selectedUser);
+    }
+    
+    let headers = currentHeaders;
+    const data = currentTableData;
+
+    setCurrentUsername(selectedUser === 'ALL_USERS' ? 'All Users' : selectedUser);
+
+    const thead = document.querySelector('#data-table thead tr');
+    const tbody = document.getElementById('table-body');
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+
+    if (data.length > 0) {
+        headers = headers.filter(header => header !== 'user_id');
+
+        headers.forEach(header => {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider sticky top-0 z-10';
+            th.style.backgroundColor = '#334155';
+            th.textContent = header;
+            thead.appendChild(th);
+        });
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.classList.add('hover:bg-slate-700', 'transition', 'duration-150');
+            headers.forEach((header, index) => {
+                const td = document.createElement('td');
+                td.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'text-gray-200');
+                
+                let displayValue = row[header];
+                if (typeof displayValue === 'number' && !isNaN(displayValue)) {
+                    displayValue = Number.isInteger(displayValue) ? displayValue : displayValue.toFixed(2);
+                }
+                td.textContent = displayValue;
+
+                if (index === 0) {
+                    td.classList.add('font-medium', 'text-white');
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
         });
     }
 
-    // Create ordered objects
-    const orderedEnergyByTimeOfDay = {};
-    timeOfDayOrder.forEach(time => {
-        if (energy_by_time_of_day[time]) {
-            orderedEnergyByTimeOfDay[time] = energy_by_time_of_day[time];
-        }
-    });
-    // Add any remaining times not in the predefined order
-    for (const time in energy_by_time_of_day) {
-        if (!timeOfDayOrder.includes(time) && !orderedEnergyByTimeOfDay[time]) {
-            orderedEnergyByTimeOfDay[time] = energy_by_time_of_day[time];
-        }
-    }
+    const calculatedStats = calculateStats(data, headers);
+    updateStats(calculatedStats);
 
-    const orderedSessionsByDayOfWeek = {};
-    daysOfWeekOrder.forEach(day => {
-        if (sessions_by_day_of_week[day]) {
-            orderedSessionsByDayOfWeek[day] = sessions_by_day_of_week[day];
-        }
-    });
-    // Add any remaining days not in the predefined order
-    for (const day in sessions_by_day_of_week) {
-        if (!daysOfWeekOrder.includes(day) && !orderedSessionsByDayOfWeek[day]) {
-            orderedSessionsByDayOfWeek[day] = sessions_by_day_of_week[day];
-        }
-    }
+    const calculatedData = calculateChartData(data, headers);
+    updateEnergyChart(calculatedData);
+    updateSessionsChart(calculatedData);
 
-    return {
-        energy_by_time_of_day: orderedEnergyByTimeOfDay,
-        sessions_by_day_of_week: orderedSessionsByDayOfWeek
-    };
+    const now = new Date();
+    document.getElementById('last-updated').textContent = now.toLocaleTimeString();
+
+    loadStationsMap();
 }
 
-// Function to fetch data for logged-in user
-async function fetchData(headersLength) {
+async function initialLoad() {
     try {
-        const response = await fetch('/get_info');
+        const response = await fetch('/get_info?username=ALL_USERS');
         const responseData = await response.json();
-        let headers = responseData.headers;
-        const data = responseData.data;
-
-        // Determine the username from the data (first row if available)
-        if (data.length > 0 && headers.includes('user_id')) {
-            const userIdIndex = headers.indexOf('user_id');
-            if (userIdIndex !== -1 && data[0] && data[0][headers[userIdIndex]]) {
-                setCurrentUsername(data[0][headers[userIdIndex]]);
-            }
-        }
-
-        const thead = document.querySelector('#data-table thead tr');
-        const tbody = document.getElementById('table-body');
-        thead.innerHTML = '';
-        tbody.innerHTML = '';
-
-        if (data.length > 0) {
-            // Filter out the user_id header
-            headers = headers.filter(header => header !== 'user_id');
-
-            headers.forEach(header => {
-                const th = document.createElement('th');
-                th.scope = 'col';
-                th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider sticky top-0 z-10';
-                th.style.backgroundColor = '#334155'; // Remove transparency
-                th.textContent = header;
-                thead.appendChild(th);
-            });
-
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.classList.add('hover:bg-slate-700', 'transition', 'duration-150');
-
-                headers.forEach((header, index) => {
-                    const td = document.createElement('td');
-                    td.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'text-gray-200');
-                    td.textContent = row[header];
-
-                    // Format numeric values
-                    let displayValue = row[header];
-                    if (typeof displayValue === 'number' && !isNaN(displayValue)) {
-                        displayValue = Number.isInteger(displayValue) ? displayValue : displayValue.toFixed(2);
-                    } else if (typeof displayValue === 'string' && !isNaN(parseFloat(displayValue)) && !displayValue.includes(':')) {
-                        const num = parseFloat(displayValue);
-                        if (!isNaN(num)) {
-                            displayValue = Number.isInteger(num) ? num : num.toFixed(2);
-                        }
-                    }
-
-                    td.textContent = displayValue;
-
-                    // Add different styling for the first column (name)
-                    if (index === 0) {
-                        td.classList.add('font-medium', 'text-white');
-                    }
-
-                    tr.appendChild(td);
-                });
-
-                tbody.appendChild(tr);
-            });
-        }
-
-        // Update statistics and charts from table data
-        const calculatedStats = calculateStats(data, headers);
-        updateStats(calculatedStats);
-
-        const calculatedData = calculateChartData(data, headers);
-        updateEnergyChart(calculatedData);
-        updateSessionsChart(calculatedData);
-
-        // Update last updated time
-        const now = new Date();
-        document.getElementById('last-updated').textContent = now.toLocaleTimeString();
-
+        allUsersData = responseData.data;
+        currentHeaders = responseData.headers;
+        updateDashboard();
     } catch (error) {
-        console.error('Error fetching data:', error);
-        // Display error message to user
-        const tbody = document.getElementById('table-body');
-        const errorRow = document.createElement('tr');
-        const errorCell = document.createElement('td');
-        errorCell.setAttribute('colspan', headersLength);
-        errorCell.classList.add('px-6', 'py-4', 'text-center', 'text-sm', 'text-red-400');
-        errorCell.textContent = 'Error loading data. Please try again later.';
-        errorRow.appendChild(errorCell);
-        tbody.appendChild(errorRow);
+        console.error('Error fetching initial data:', error);
     }
 }
 
-// Initialize map
 let stationsMap = null;
 let markers = [];
 let currentUsername = null;
 
-// Function to get the current username from the table data
-function getCurrentUsername() {
-    // If we have the username stored, return it
-    if (currentUsername) {
-        return currentUsername;
-    }
-
-    // Get username from the first row of the table if available
-    // We need to use the headers to find the user_id column
-    const headersRow = document.querySelector('#data-table thead tr');
-    if (headersRow) {
-        const headers = Array.from(headersRow.cells).map(cell => cell.textContent.trim().toLowerCase());
-        const userIdIndex = headers.indexOf('user_id');
-
-        if (userIdIndex !== -1) {
-            // Get the first data row
-            const firstRow = document.querySelector('#table-body tr');
-            if (firstRow && firstRow.cells[userIdIndex]) {
-                currentUsername = firstRow.cells[userIdIndex].textContent.trim();
-                return currentUsername;
-            }
-        }
-    }
-    // If no username found in table, return null
-    return currentUsername;
-}
-
-// Function to set the current username
 function setCurrentUsername(username) {
     currentUsername = username;
 }
 
-// Function to initialize and populate the map with charging stations
 async function loadStationsMap() {
-    // Clear existing map if it exists
     if (stationsMap) {
         stationsMap.remove();
         markers = [];
     }
 
-    // Create map centered on Portugal (approximate coordinates)
     stationsMap = L.map('stations-map').setView([39.6, -8.0], 7);
 
-    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 18,
@@ -408,110 +294,49 @@ async function loadStationsMap() {
     }).addTo(stationsMap);
 
     try {
-        // Get username from table data
-        const username = getCurrentUsername();
-        let stations = [];
-
-        if (username) {
-            // Fetch personalized stations for the user
-            const response = await fetch(`/get_stations_for_user/${encodeURIComponent(username)}`);
-            stations = await response.json();
-        } else {
-            // Fallback to all stations if no username is available
-            const response = await fetch('/get_stations');
-            stations = await response.json();
-        }
+        const selectedUser = document.getElementById('user-filter').value;
+        const response = await fetch(`/get_stations?username=${encodeURIComponent(selectedUser)}`);
+        const stations = await response.json();
 
         if (stations && stations.length > 0) {
-            // Group stations by location to handle overlapping markers
             const locationGroups = {};
-
             stations.forEach(station => {
                 if (station.latitude && station.longitude) {
                     const key = `${station.latitude},${station.longitude}`;
-
                     if (!locationGroups[key]) {
                         locationGroups[key] = [];
                     }
-
                     locationGroups[key].push(station);
                 }
             });
 
-            // Add markers for each location group
             for (const [locationKey, groupedStations] of Object.entries(locationGroups)) {
                 const firstStation = groupedStations[0];
-                const latitude = firstStation.latitude;
-                const longitude = firstStation.longitude;
+                const { latitude, longitude } = firstStation;
+                const allVisited = groupedStations.every(s => s.visited);
+                const noneVisited = groupedStations.every(s => !s.visited);
+                let color = allVisited ? 'green' : (noneVisited ? 'red' : 'orange');
 
-                // Determine color based on the status of the first station (or use a mixed indicator)
-                // If all stations are visited, use green; if none are visited, use red; if mixed, use orange
-                const allVisited = groupedStations.every(station => station.visited);
-                const noneVisited = groupedStations.every(station => !station.visited);
-                let color;
-
-                if (allVisited) {
-                    color = 'green';
-                } else if (noneVisited) {
-                    color = 'red';
-                } else {
-                    color = 'orange'; // Mixed status
-                }
-
-                // Create custom popup content with scroll and higher z-index for multiple stations
                 let popupContent = '';
                 if (groupedStations.length === 1) {
-                    // Single station
-                    const station = groupedStations[0];
-                    popupContent = `<div style="min-width: 200px; z-index: 10000;">
-                        <b>${station.station_id}</b><br>
-                        Lat: ${station.latitude}<br>
-                        Lon: ${station.longitude}<br>
-                        Status: ${station.visited ? 'Visited' : 'Not Visited'}
-                    </div>`;
+                    popupContent = `<div style="min-width: 200px; z-index: 10000;"><b>${firstStation.station_id}</b><br>Lat: ${latitude}<br>Lon: ${longitude}<br>Status: ${firstStation.visited ? 'Visited' : 'Not Visited'}</div>`;
                 } else {
-                    // Multiple stations with scroll box, visited stations first
-                    // Sort stations so visited ones appear first
-                    const sortedStations = [...groupedStations].sort((a, b) => {
-                        if (a.visited && !b.visited) return -1;
-                        if (!a.visited && b.visited) return 1;
-                        return 0;
-                    });
-
-                    popupContent = `<div style="min-width: 250px; z-index: 10000;">
-                        <div style="font-weight: bold; margin-bottom: 8px;">${groupedStations.length} Stations at this location:</div>
-                        <div style="max-height: 200px; overflow-y: auto; overflow-x: hidden; z-index: 10000;">
-                            ${sortedStations.map(station => `
-                                <div style="margin-top: 5px; padding: 4px 2px; border-bottom: 1px solid #4a5568; z-index: 10000;">
-                                    <span style="color: ${station.visited ? 'green' : 'red'};">●</span>
-                                    <b>${station.station_id}</b> - ${station.visited ? 'Visited' : 'Not Visited'}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
+                    const sortedStations = [...groupedStations].sort((a, b) => (a.visited === b.visited) ? 0 : a.visited ? -1 : 1);
+                    popupContent = `<div style="min-width: 250px; z-index: 10000;"><div style="font-weight: bold; margin-bottom: 8px;">${groupedStations.length} Stations at this location:</div><div style="max-height: 200px; overflow-y: auto; overflow-x: hidden; z-index: 10000;">${sortedStations.map(s => `<div style="margin-top: 5px; padding: 4px 2px; border-bottom: 1px solid #4a5568; z-index: 10000;"><span style="color: ${s.visited ? 'green' : 'red'};">●</span> <b>${s.station_id}</b> - ${s.visited ? 'Visited' : 'Not Visited'}</div>`).join('')}</div></div>`;
                 }
 
                 const marker = L.marker([latitude, longitude], {
                     icon: L.divIcon({
                         className: 'custom-icon',
-                        html: `<div style="background-color: ${color}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px; font-weight: bold;">
-                            ${groupedStations.length > 1 ? groupedStations.length : ''}
-                        </div>`,
+                        html: `<div style="background-color: ${color}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px; font-weight: bold;">${groupedStations.length > 1 ? groupedStations.length : ''}</div>`,
                         iconSize: [16, 16],
                         iconAnchor: [8, 8]
                     })
                 }).addTo(stationsMap);
-
-                marker.bindPopup(popupContent, {
-                    autoPan: true,
-                    maxHeight: 300,
-                    maxWidth: 400,
-                    className: 'station-popup'
-                });
+                marker.bindPopup(popupContent, { autoPan: true, maxHeight: 300, maxWidth: 400, className: 'station-popup' });
                 markers.push(marker);
             }
 
-            // Fit bounds to show all markers
             if (markers.length > 0) {
                 const group = new L.featureGroup(markers);
                 stationsMap.fitBounds(group.getBounds().pad(0.1));
@@ -522,15 +347,144 @@ async function loadStationsMap() {
     }
 }
 
-// Set up refresh button
-document.addEventListener('DOMContentLoaded', function () {
-    // Call fetchData after the DOM is loaded, passing the number of headers
-    const headersCount = document.querySelectorAll('#data-table thead th').length;
-    fetchData(headersCount);
-    loadStationsMap(); // Load the stations map
+async function populateUserDropdown() {
+    try {
+        const response = await fetch('/get_users');
+        const result = await response.json();
+        let users = result.users || [];
 
-    document.getElementById('refresh-btn').addEventListener('click', function () {
-        fetchData(headersCount);
-        loadStationsMap(); // Refresh the stations map as well
-    });
+        users.sort((a, b) => {
+            const idA = parseInt(a.replace('User_', ''), 10) || 0;
+            const idB = parseInt(b.replace('User_', ''), 10) || 0;
+            return idA - idB;
+        });
+
+        const userFilter = document.getElementById('user-filter');
+        if (userFilter) {
+            userFilter.innerHTML = '<option value="ALL_USERS" selected>All Users</option>';
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user;
+                option.textContent = user;
+                userFilter.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching users:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const headerDiv = document.querySelector('header .flex.justify-between.items-center');
+    if (headerDiv) {
+        const userFilterDiv = document.createElement('div');
+        userFilterDiv.className = 'flex items-center space-x-3 mr-4';
+        userFilterDiv.innerHTML = `<label for="user-filter" class="text-sm text-gray-400">Filter by User:</label><select id="user-filter" class="bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-accent"><option value="">Select User</option></select>`;
+        headerDiv.insertBefore(userFilterDiv, headerDiv.firstChild);
+
+        document.getElementById('user-filter').addEventListener('change', updateDashboard);
+        
+        populateUserDropdown().then(initialLoad);
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', initialLoad);
+
+    const feat1Select = document.getElementById('feat1-select');
+    const feat2Select = document.getElementById('feat2-select');
+    const clusterChartContainer = document.getElementById('cluster-chart-container');
+
+    // Initialize the cluster chart container to be hidden
+    if (clusterChartContainer) {
+        clusterChartContainer.classList.add('hidden');
+        clusterChartContainer.style.display = 'none';
+    }
+
+    let clusterChart = null;
+
+    function drawClusterChart(data, feat1, feat2) {
+        const ctx = document.getElementById('clusterChart').getContext('2d');
+        if (clusterChart) {
+            clusterChart.destroy();
+        }
+
+        const { centroids, labeled_data } = data;
+        const n_clusters = centroids.length;
+        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#E7E9ED', '#7F7F7F', '#4D4D4D'];
+        const datasets = [];
+
+        for (let i = 0; i < n_clusters; i++) {
+            const cluster_points = labeled_data.filter(p => p.cluster === i);
+            datasets.push({
+                label: `Cluster ${i + 1}`,
+                data: cluster_points.map(p => ({ x: p[feat1], y: p[feat2] })),
+                backgroundColor: colors[i % colors.length] + '80',
+                borderColor: colors[i % colors.length],
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                type: 'scatter'
+            });
+        }
+
+        clusterChart = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: feat1, color: '#cbd5e1' }, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#cbd5e1' } },
+                    y: { title: { display: true, text: feat2, color: '#cbd5e1' }, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#cbd5e1' } }
+                },
+                plugins: { legend: { labels: { color: '#cbd5e1' } } }
+            }
+        });
+
+        clusterChartContainer.style.display = 'block';
+        clusterChartContainer.classList.remove('hidden');
+    }
+
+    async function generateClusterChart() {
+        const feat1 = feat1Select.value;
+        const feat2 = feat2Select.value;
+
+        if (!feat1 || !feat2) {
+            clusterChartContainer.classList.add('hidden');
+            return;
+        }
+
+        if (feat1 === feat2) {
+            alert('Please select two different features.');
+            return;
+        }
+
+        // Clear the chart immediately when starting a new request
+        if (clusterChart) {
+            clusterChart.destroy();
+            clusterChart = null;
+        }
+        clusterChartContainer.classList.add('hidden');
+
+        const feat1_list = currentTableData.map(d => d[feat1]);
+        const feat2_list = currentTableData.map(d => d[feat2]);
+
+        try {
+            const response = await fetch('/classify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ feat1, feat2 })
+            });
+
+            if (!response.ok) throw new Error('Failed to get classification data');
+
+            const data = await response.json();
+            drawClusterChart(data, feat1, feat2);
+
+        } catch (error) {
+            console.error('Error during classification:', error);
+            alert('An error occurred during classification. Please check the console.');
+        }
+    }
+
+    feat1Select.addEventListener('change', generateClusterChart);
+    feat2Select.addEventListener('change', generateClusterChart);
 });

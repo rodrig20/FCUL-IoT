@@ -194,11 +194,46 @@
             </div>
         </div>
 
-        <!-- Map Section -->
-        <div class="mb-8">
+        <!-- Cluster Analysis and Map Section Side by Side -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Cluster Analysis Section -->
+            <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                <h3 class="text-lg font-semibold text-white mb-4">Cluster Analysis</h3>
+                <div class="flex flex-col space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
+                        <div class="flex-1">
+                            <label for="feat1-select" class="text-sm font-medium text-gray-400">Feature 1</label>
+                            <select id="feat1-select" class="w-full bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-accent">
+                                <option value="" disabled selected>Select Feature</option>
+                                {% for header in headers %}
+                                    {% if header not in ['vehicle_model', 'charging_station_id', 'charging_start_time', 'charging_end_time', 'time_of_day', 'day_of_week', 'user_id'] %}
+                                        <option value="{{ header }}">{{ header }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label for="feat2-select" class="text-sm font-medium text-gray-400">Feature 2</label>
+                            <select id="feat2-select" class="w-full bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 focus:outline-none focus:ring-2 focus:ring-accent">
+                                <option value="" disabled selected>Select Feature</option>
+                                {% for header in headers %}
+                                    {% if header not in ['vehicle_model', 'charging_station_id', 'charging_start_time', 'charging_end_time', 'time_of_day', 'day_of_week', 'user_id'] %}
+                                        <option value="{{ header }}">{{ header }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div id="cluster-chart-container" class="hidden h-64 overflow-hidden">
+                        <canvas id="clusterChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Section -->
             <div class="bg-slate-800/70 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
                 <h3 class="text-lg font-semibold text-white mb-4">Charging Stations Map</h3>
-                <div id="stations-map" class="w-full h-96 rounded-lg"></div>
+                <div id="stations-map" class="w-full h-96 rounded-lg" style="min-height: 384px;"></div>
             </div>
         </div>
 

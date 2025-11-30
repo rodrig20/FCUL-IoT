@@ -96,6 +96,11 @@ tr:hover {
     height: 250px !important;
 }
 
+#clusterChart {
+    max-height: 256px; /* Aproximadamente 64*4px para equivaler a h-64 do Tailwind */
+    height: 256px !important;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .data-table-container {
