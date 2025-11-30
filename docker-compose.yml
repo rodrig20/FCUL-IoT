@@ -3,9 +3,7 @@ services:
         image: eclipse-mosquitto:2.0.22
         container_name: mosquitto
         ports:
-            - 1883:1883
             - 8883:8883
-            - 9001:9001
         volumes:
             - ./mosquitto/config:/mosquitto/config
             - ./mosquitto/data:/mosquitto/data

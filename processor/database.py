@@ -128,7 +128,7 @@ class Database:
 
                 header = [col.strip() for col in header_line.split(";")]
                 column_names = [
-                    f'"{col.lower().replace(" ", "_").replace("(", "").replace(")", "").replace("-", "_").replace("/", "_per_").replace("__", "_")}"'
+                    f'"{col.lower().replace(" ", "_").replace("(", "").replace(")", "").replace("-", "_").replace("/", "_per_").replace("%", "_percent").replace("__", "_")}"'
                     for col in header
                 ]
 
@@ -264,6 +264,56 @@ class Database:
                 conn.rollback()
             cls.__logger.error(f"Error initializing stations database from CSV: {e}")
             raise e  # Propagate the error so the application knows initialization failed
+        finally:
+            if conn:
+                cls.__release_db_connection(conn)
+
+    @classmethod
+    def insert_ev_data(cls, data_dict: dict):
+        """Inserts a new EV charging data record into the ev_with_stations table."""
+        conn = None
+        try:
+            conn = cls.__get_db_connection()
+            if not conn:
+                cls.__logger.error("Could not get DB connection to insert EV data")
+                return
+
+            with conn.cursor() as cur:
+                # Sanitize keys from the input dict to match DB columns
+                def sanitize_key(key):
+                    return key.lower().replace(" ", "_").replace("(", "").replace(")", "").replace("-", "_").replace("/", "_per_").replace("%", "_percent").replace("__", "_").replace("\ufeff", "")
+
+                sanitized_data = {sanitize_key(k): v for k, v in data_dict.items()}
+
+                # Get the list of columns from the database to ensure we only insert valid data
+                db_columns = cls.get_headers()
+                
+                # Filter the sanitized data to only include keys that are actual columns
+                data_to_insert = {k: v for k, v in sanitized_data.items() if k in db_columns}
+
+                if not data_to_insert:
+                    cls.__logger.warning("No valid columns found in data to insert.")
+                    return
+
+                # Construct the INSERT statement dynamically and safely
+                columns = ", ".join([f'"{k}"' for k in data_to_insert.keys()])
+                placeholders = ", ".join(["%s"] * len(data_to_insert))
+                
+                sql = f"INSERT INTO ev_with_stations ({columns}) VALUES ({placeholders});"
+                values = list(data_to_insert.values())
+
+                # Debugging logs
+                cls.__logger.info(f"Executing SQL: {sql}")
+                cls.__logger.info(f"With values: {values}")
+                
+                cur.execute(sql, values)
+                conn.commit()
+                cls.__logger.info("Successfully inserted new EV data record.")
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            cls.__logger.error(f"Error inserting EV data into database: {e}", exc_info=True)
         finally:
             if conn:
                 cls.__release_db_connection(conn)

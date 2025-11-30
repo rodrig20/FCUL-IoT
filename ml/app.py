@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify
-import pandas as pd
 import logging
 import signal
 import sys

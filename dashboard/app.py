@@ -105,7 +105,7 @@ def classify():
 
     if not feat1 or not feat2:
         return jsonify({"error": "Missing feat1 or feat2 in JSON body"}), 400
-    
+
     data = ProcessorRequester.classify(feat1, feat2)
 
     if data:
