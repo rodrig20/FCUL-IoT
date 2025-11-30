@@ -91,3 +91,49 @@ class ProcessorRequester:
         except requests.exceptions.RequestException as e:
             cls.__logger.error(f"Error fetching stations for user: {e}")
             return None
+
+    @classmethod
+    @Cache(max_age_seconds=30 * 60)
+    def get_all_users(cls):
+        """Get list of all users from the Processor service with caching (30 min)
+
+        Returns:
+            list[str]: List of all user IDs if successful, empty list if an error occurs
+        """
+        try:
+            response = requests.get(f"{cls.__base_url}/get_users")
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            cls.__logger.error(f"Error fetching users: {e}")
+            return []
+
+    @classmethod
+    @Cache(max_age_seconds=5)
+    def get_all_users_info(cls):
+        """Get all information for all users from the Processor service with caching (5 sec)
+
+        Returns:
+            dict: All info from processor for all users if successful, empty dict if an error occurs
+        """
+        try:
+            response = requests.get(f"{cls.__base_url}/get_all_users_info")
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            cls.__logger.error(f"Error fetching all users info: {e}")
+            return {}
+
+    @classmethod
+    def classify(cls, feat1, feat2):
+        """
+        Requests clustering from the processor service.
+        """
+        try:
+            response = requests.post(f"{cls.__base_url}/classify", json={"feat1": feat1, "feat2": feat2})
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            cls.__logger.error(f"Error making classify request: {e}")
+            return None
+

@@ -67,6 +67,18 @@ services:
             timeout: 5s
             retries: 5
 
+    ml:
+        build:
+            context: ./ml
+        container_name: ml
+        depends_on:
+            - processor
+        expose:
+            - "5000"
+        networks:
+            IoT-project-net:
+                ipv4_address: 172.100.10.50
+
 networks:
   IoT-project-net:
       driver: bridge
