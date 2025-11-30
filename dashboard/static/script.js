@@ -387,7 +387,6 @@ document.addEventListener('DOMContentLoaded', function () {
         populateUserDropdown().then(initialLoad);
     }
 
-    document.getElementById('refresh-btn').addEventListener('click', initialLoad);
 
     const feat1Select = document.getElementById('feat1-select');
     const feat2Select = document.getElementById('feat2-select');

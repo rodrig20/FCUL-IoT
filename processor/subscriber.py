@@ -1,6 +1,8 @@
 import paho.mqtt.client as mqtt
 import logging
 import os
+import json
+from database import Database
 
 
 __logger = logging.getLogger("mqtt-subscriber")
@@ -30,15 +32,28 @@ def start_mqtt_client():
     def on_connect(client, userdata, flags, return_code):
         if return_code == 0:
             __logger.info("Connected to broker")
-            client.subscribe("idc/iris")
+            client.subscribe("idc/ev")
         else:
             __logger.error(f"Could not connect, return code: {return_code}")
 
     def on_message(client, userdata, message):
-        payload = str(message.payload.decode("utf-8"))
-        __logger.info(f"Received message: {payload}")
+        payload = message.payload.decode("utf-8")
+        __logger.info(f"Received message: {payload[:150]}...") # Log a snippet
 
-        # TODO: when I know what to do, add DB-related stuff here
+        try:
+            message_dict = json.loads(payload)
+            ev_data = message_dict.get("data")
+
+            if ev_data and isinstance(ev_data, dict):
+                # Call the class method to insert the data
+                Database.insert_ev_data(ev_data)
+            else:
+                __logger.warning("No 'data' field found in message or it's not a dictionary.")
+
+        except json.JSONDecodeError:
+            __logger.error(f"Failed to decode JSON from message: {payload}")
+        except Exception as e:
+            __logger.error(f"An error occurred while processing message: {e}")
 
     broker_hostname = "mosquitto"
     port = 8883
@@ -46,6 +61,9 @@ def start_mqtt_client():
     client = mqtt.Client("Processor")
     client.on_connect = on_connect
     client.on_message = on_message
+
+    # Set username and password for authentication
+    client.username_pw_set("idc_user", "sec123")
 
     try:
         __logger.info("Connecting to broker...")

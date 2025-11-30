@@ -1,6 +1,6 @@
 flask==3.1.2
-pandas
-requests==3.32.5
-scikit-learn
-numpy
-waitress
+pandas==2.3.3
+requests==2.32.5
+scikit-learn==1.7.2
+numpy==2.3.5
+waitress==3.0.2

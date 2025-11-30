@@ -1,4 +1,3 @@
-import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import pandas as pd
@@ -29,7 +28,7 @@ def perform_clustering(data):
 
     if df.empty:
         return {"centroids": [], "labeled_data": []}
-        
+
     X = df[feature_names].values
 
     best_k = -1
